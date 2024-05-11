@@ -1,5 +1,5 @@
 // import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import react from "@vitejs/plugin-react";
 
 // // https://vitejs.dev/config/
 // export default defineConfig({
@@ -18,8 +18,8 @@ export default defineConfig({
     proxy: {
       "/api": {
         // No trailing slash here
-        target: "http://localhost:3000/api", // Replace with your actual backend URL
-        // target: "https://backend-production-fada0.up.railway.app/api",
+        // target: "http://localhost:3000/api", // Replace with your actual backend URL
+        target: "https://backend-production-fada0.up.railway.app/api",
         changeOrigin: true, // Ensures correct headers are sent
         rewrite: (path) => path.replace(/^\/api/, ""), // Remove '/api' prefix before proxying
       },
