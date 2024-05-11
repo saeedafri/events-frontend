@@ -6,7 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./Datepicker.css";
 import { Link, useNavigate } from "react-router-dom";
 import { GoArrowLeft } from "react-icons/go";
-import "./Select.css"
+import "./Select.css";
 import { MdCancel } from "react-icons/md";
 
 function EventForm() {
@@ -25,14 +25,13 @@ function EventForm() {
       attachments: [],
       eventDescription: "",
       eventLocationName: "",
-      eventGuestIDs:[],
+      eventGuestIDs: [],
     },
   });
 
-
   const [addedGuests, setAddedGuests] = useState([]);
-  const [inputValue, setInputValue] = useState("")
-  const [selectedGuest, setSelectedGuest] = useState(null)
+  const [inputValue, setInputValue] = useState("");
+  const [selectedGuest, setSelectedGuest] = useState(null);
 
   const notificationOptions = ["Email", "Slack"];
   const [showDescription, setShowDescription] = useState(false);
@@ -40,57 +39,56 @@ function EventForm() {
   const startDate = watch("eventDate");
   const startTime = watch("eventTime");
   const startDuration = watch("eventDuration");
-  const [locations, setLocations] = useState([])
+  const [locations, setLocations] = useState([]);
   const [guestList, setGuestList] = useState([]);
-  const [completeGuestList, setCompleteGuestList] = useState([])
-  const navigate = useNavigate()
+  const [completeGuestList, setCompleteGuestList] = useState([]);
+  const navigate = useNavigate();
 
-  console.log("first ::", getValues("eventGuestIDs"))
+  console.log("first ::", getValues("eventGuestIDs"));
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [locationResponse, completeGuestResponse] = await  Promise.all([
-          fetch("/api/locations/getAllLocationList"),
-          fetch("/api/guests/getAllGuestsList")
-        ])
+        const [locationResponse, completeGuestResponse] = await Promise.all([
+          fetch(
+            "https://backend-production-fada0.up.railway.app/api/locations/getAllLocationList"
+          ),
+          fetch(
+            "https://backend-production-fada0.up.railway.app/api/guests/getAllGuestsList"
+          ),
+        ]);
         if (!locationResponse.ok || !completeGuestResponse.ok) {
           throw new Error("One or more API requests failed");
         }
-        
+
         const [locationData, completeGuestData] = await Promise.all([
           locationResponse.json(),
-          completeGuestResponse.json()
+          completeGuestResponse.json(),
+        ]);
 
-        ])
-
-        
-        setLocations(locationData)
-        setCompleteGuestList(completeGuestData)
-        console.log("data ::", locationData)
-        console.log("Guest data ::", completeGuestData)
+        setLocations(locationData);
+        setCompleteGuestList(completeGuestData);
+        console.log("data ::", locationData);
+        console.log("Guest data ::", completeGuestData);
       } catch (error) {
-        console.error("location list not fetched :: ",error)
+        console.error("location list not fetched :: ", error);
       }
-    }
+    };
     fetchData();
-  }, [])
-  
+  }, []);
 
   const handleGuestSearch = (event) => {
     if (event.target.value) {
       const filteredList = completeGuestList.filter((guest) =>
         guest.guestName.toLowerCase().includes(event.target.value)
-      )
-      setGuestList(filteredList)
+      );
+      setGuestList(filteredList);
 
-      console.log("filteredList :: ", filteredList)
+      console.log("filteredList :: ", filteredList);
     } else {
-      setGuestList([])
+      setGuestList([]);
     }
-  
-
-  }
+  };
 
   const handleGuestSelection = (guestId) => {
     const selectedGuest = guestList.find((guest) => guest.id === guestId);
@@ -99,37 +97,36 @@ function EventForm() {
     setGuestList([]);
   };
 
-
   const handleAddGuest = () => {
     if (selectedGuest) {
       const guestIds = watch("eventGuestIDs"); // Get current eventGuestIDs
-      if (!guestIds.includes(selectedGuest.id)) { // Check for duplicate ID
+      if (!guestIds.includes(selectedGuest.id)) {
+        // Check for duplicate ID
         setValue(
           "eventGuestIDs",
           [...guestIds, selectedGuest.id] // Add selected guest ID if not already present
         );
-        setAddedGuests((prevAddedGuests) => [...prevAddedGuests, selectedGuest]);
+        setAddedGuests((prevAddedGuests) => [
+          ...prevAddedGuests,
+          selectedGuest,
+        ]);
       }
-      setInputValue("")
+      setInputValue("");
       setSelectedGuest(null); // Clear selected guest after adding (optional)
     }
   };
-
 
   const handleRemoveGuest = (guestId) => {
     setAddedGuests((prevAddedGuests) =>
       prevAddedGuests.filter((guest) => guest.id !== guestId)
     );
-    const updatedGuestIds = watch("eventGuestIDs").filter((id) => id !== guestId);
+    const updatedGuestIds = watch("eventGuestIDs").filter(
+      (id) => id !== guestId
+    );
     setValue("eventGuestIDs", updatedGuestIds);
   };
 
-
-
-
-
   const calculation = () => {
-
     const date = new Date(startDate).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -144,7 +141,15 @@ function EventForm() {
     hours = hours ? (hours < 10 ? "0" + hours : hours) : 12;
     minutes = minutes < 10 ? minutes : minutes;
 
-    console.log("hours ::", hours, " :: ", minutes, " :: ", "period ::", period);
+    console.log(
+      "hours ::",
+      hours,
+      " :: ",
+      minutes,
+      " :: ",
+      "period ::",
+      period
+    );
 
     // Convert eventDuration from minutes to hours and minutes
     const totalMinutes = parseInt(startDuration);
@@ -172,18 +177,18 @@ function EventForm() {
     return `${date} from ${hours}:${minutes} ${period} until ${endHours}:${endMinutes} ${period}`;
   };
 
-
-
-
   const onSubmit = async (data) => {
     // Add data.attachments = watch("attachments"); if needed
 
     try {
-      const response = await fetch("/api/events/createEvents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }, // Set the content type
-        body: JSON.stringify(data), // Convert data to JSON
-      });
+      const response = await fetch(
+        "https://backend-production-fada0.up.railway.app/api/events/createEvents",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }, // Set the content type
+          body: JSON.stringify(data), // Convert data to JSON
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
@@ -191,14 +196,13 @@ function EventForm() {
 
       const responseData = await response.json();
       console.log("Event created successfully:", responseData);
-      navigate("/")
+      navigate("/");
       // Handle successful response (e.g., show a success message, redirect)
     } catch (error) {
       console.error("Error creating event:", error);
       // Handle errors (e.g., show an error message)
     }
   };
-
 
   // const handleRemove = (event, index) => {
   //   event.preventDefault();
@@ -216,14 +220,13 @@ function EventForm() {
   //   setValue('attachments', [...watch('attachments'), ...files]); // update 'attachments' field
   // };
 
-
-
   return (
     <div className="max-w-2xl bg-white my-4 sm:my-20 shadow-lg rounded-md mx-4 sm:mx-auto px-4 sm:px-12  py-4 sm:py-16 relative">
       <div className=" mb-12 sm:mb-4 ">
         <Link
           to="/"
-          className="absolute top-4 left-4 bg-custom-gray hover:ring-blue-500 hover:ring-1 text-black font-bold py-2 px-4 rounded-md border">
+          className="absolute top-4 left-4 bg-custom-gray hover:ring-blue-500 hover:ring-1 text-black font-bold py-2 px-4 rounded-md border"
+        >
           <GoArrowLeft />
         </Link>
       </div>
@@ -241,10 +244,10 @@ function EventForm() {
             <button
               type="button"
               onClick={() => setShowDescription(!showDescription)}
-              className="absolute  top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-2 py-1  rounded focus:outline-none focus:shadow-outline text-sm">
+              className="absolute  top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-2 py-1  rounded focus:outline-none focus:shadow-outline text-sm"
+            >
               {showDescription ? "Hide Description" : "Add Description"}
             </button>
-
           </div>
           {showDescription && (
             <Input
@@ -283,7 +286,8 @@ function EventForm() {
             <div>
               <label
                 htmlFor="Duration"
-                className="block text-sm font-medium mb-1">
+                className="block text-sm font-medium mb-1"
+              >
                 Duration
               </label>
               <select
@@ -307,9 +311,7 @@ function EventForm() {
                 </p>
               )}
             </div>
-
           </div>
-
 
           <div className="relative mb-2">
             <p className="w-fit text-xs font-semibold text-gray-600 transform -translate-y-2">
@@ -324,7 +326,8 @@ function EventForm() {
           <div className="mb-4">
             <label
               htmlFor="Location"
-              className="block text-sm font-medium mb-1">
+              className="block text-sm font-medium mb-1"
+            >
               Location
             </label>
             <select
@@ -335,16 +338,16 @@ function EventForm() {
               <option value="" className="hidden">
                 Select Location...
               </option>
-              
+
               {locations.length > 0 ? (
                 locations.map((location) => (
-                  
-                  <option key={location.id || location} value={location.name}
+                  <option
+                    key={location.id || location}
+                    value={location.name}
                     className="max-w-max p-8 flex-wrap cursor-pointer gap-4 m-8"
                   >
                     {`${location.venue}, ${location.city}`}
-                    </option>
-                  
+                  </option>
                 ))
               ) : (
                 <option value="" disabled>
@@ -355,67 +358,70 @@ function EventForm() {
           </div>
 
           <div>
-          <div className=" relative">
-            <label htmlFor="Add Guests"
-              className="block text-sm font-medium mb-1"
-            >Add Guests</label>
-            <input type="text"
-              className="w-full text-sm bg-custom-gray px-3 py-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500"
-              onChange={(e) =>
-                {setInputValue(e.target.value)
-                handleGuestSearch(e)}}
-              value={inputValue}
-            />
-            <button
-              type="button"
-              onClick={handleAddGuest}
-              className="absolute  top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-3 py-1  rounded focus:outline-none focus:shadow-outline text-sm">
-              Add
-            </button>
-          </div>
-
-          
-
-          <ul className="guest-list divide-y divide-gray-200">  
-          {guestList.length > 0 && (
-            guestList.map((guest) => (
-              <li key={guest.id} className="flex items-center py-2 px-4 hover:bg-blue-400 cursor-pointer"
-                onClick={(e) =>
-                {
-            handleGuestSelection(guest.id)}
-                }
+            <div className=" relative">
+              <label
+                htmlFor="Add Guests"
+                className="block text-sm font-medium mb-1"
               >
-                {guest.guestName}
-              </li>
-            ))
-          )}
-          </ul>
+                Add Guests
+              </label>
+              <input
+                type="text"
+                className="w-full text-sm bg-custom-gray px-3 py-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500"
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  handleGuestSearch(e);
+                }}
+                value={inputValue}
+              />
+              <button
+                type="button"
+                onClick={handleAddGuest}
+                className="absolute  top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-3 py-1  rounded focus:outline-none focus:shadow-outline text-sm"
+              >
+                Add
+              </button>
+            </div>
 
+            <ul className="guest-list divide-y divide-gray-200">
+              {guestList.length > 0 &&
+                guestList.map((guest) => (
+                  <li
+                    key={guest.id}
+                    className="flex items-center py-2 px-4 hover:bg-blue-400 cursor-pointer"
+                    onClick={(e) => {
+                      handleGuestSelection(guest.id);
+                    }}
+                  >
+                    {guest.guestName}
+                  </li>
+                ))}
+            </ul>
 
-          <div className="mt-2 flex gap-2">
-            {addedGuests.map((guest) => (
-              <span key={guest.id} className="bg-blue-600 text-sm text-white font-semibold px-2 py-1 rounded-md mr-2 flex items-center w-fit">
-                {guest.guestName}
-                <button
-                  type="button"
-                  className="ml-2 items-center font-semibold  "
-                  onClick={() => handleRemoveGuest(guest.id)}
+            <div className="mt-2 flex gap-2">
+              {addedGuests.map((guest) => (
+                <span
+                  key={guest.id}
+                  className="bg-blue-600 text-sm text-white font-semibold px-2 py-1 rounded-md mr-2 flex items-center w-fit"
                 >
-                  <MdCancel />
-                </button>
-              </span>
-            ))}
+                  {guest.guestName}
+                  <button
+                    type="button"
+                    className="ml-2 items-center font-semibold  "
+                    onClick={() => handleRemoveGuest(guest.id)}
+                  >
+                    <MdCancel />
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
-
-          </div>
-
 
           {/* <div>
             {watch("eventGuestIDs").map((guest)=>guest.guestName)}
           </div> */}
 
-          
-  {/* Notification and remainder  */}
+          {/* Notification and remainder  */}
 
           <div className="grid sm:grid-cols-2 grid-cols-1  gap-4 mb-4 max-w-max">
             <div>
@@ -427,10 +433,9 @@ function EventForm() {
               </label>
               <div className="flex w-max gap-1 rounded-md p-3 py-3 text-sm font-medium bg-custom-gray">
                 {notificationOptions.map((option) => (
-                  <label key={option} >
+                  <label key={option}>
                     <input
                       type="radio"
-                      
                       value={option}
                       {...register("guestNotificationType")}
                       className="hidden"
@@ -440,7 +445,8 @@ function EventForm() {
                         watchNotify === option
                           ? "p-2 border bg-white border-black-300 "
                           : ""
-                      }`}>
+                      }`}
+                    >
                       {" "}
                       {option}{" "}
                     </span>
@@ -449,37 +455,34 @@ function EventForm() {
               </div>
             </div>
 
-
             <div>
               <label
                 htmlFor="reminder"
-                className="block text-sm font-medium mb-2">
+                className="block text-sm font-medium mb-2"
+              >
                 Set Reminder
               </label>
               <select
                 id="reminder"
                 {...register("reminderDurationMinutes")}
-                className="w-full px-1 py-2 rounded-md bg-custom-gray border focus:outline-none hover:ring-1 hover:ring-blue-500 text-sm">
+                className="w-full px-1 py-2 rounded-md bg-custom-gray border focus:outline-none hover:ring-1 hover:ring-blue-500 text-sm"
+              >
                 <option value="" className="hidden">
                   Select remainder
                 </option>
-                <option value="30">
-                  30 minute before event
-                </option>
+                <option value="30">30 minute before event</option>
                 <option value="60">1 hour before event</option>
                 <option value="120">2 hour before event</option>
                 <option value="180">3 hour before event</option>
                 <option value="240 ">4 hour before event</option>
               </select>
             </div>
-
           </div>
 
-
-          
           <button
             type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
             Create Event
           </button>
         </div>

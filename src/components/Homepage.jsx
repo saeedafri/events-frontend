@@ -3,20 +3,21 @@ import { Link } from "react-router-dom";
 import Spinner from "./Spinner.jsx";
 
 function Homepage() {
-
   const [events, setEvents] = useState([]); // State to store events
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const res = await fetch("/api/events/getAllEventsList");
+        const res = await fetch(
+          "https://backend-production-fada0.up.railway.app/api/events/getAllEventsList"
+        );
         const data = await res.json();
         console.log(data);
         const newData = data.map((event) => {
           let [h, m] = event.eventTime.split(":");
-            let eventTime12Hour = `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
-            
+          let eventTime12Hour = `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
+
           const convertToHoursAndMinutes = `${Math.floor(
             event.eventDuration / 60
           )}h ${
@@ -31,8 +32,7 @@ function Homepage() {
               day: "numeric",
             }),
             eventTime: eventTime12Hour,
-              eventDuration: convertToHoursAndMinutes,
-            
+            eventDuration: convertToHoursAndMinutes,
           };
         });
 
@@ -59,34 +59,37 @@ function Homepage() {
             <div className="absolute top-2 right-2 p-4 bg-white">
               <Link
                 to="/create-event"
-                className=" bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                className=" bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              >
                 Create Event
               </Link>
             </div>
             <ul className="">
-              {events.length > 0 && events.map((event) => (
-                <li
-                  key={event.id}
-                  className="bg-custom-gray p-4 m-4 
-              border rounded-md shadow-md ">
-                  <div className="grid grid-cols-1 sm:grid-cols-3  sm:items-center gap-4 items-center">
-                    <div className=" text-sm font-medium bg-white w-fit p-2 border rounded-md">
-                      <p>{event.eventDate}</p>
-                      <p className="text-center">{event.eventTime}</p>
-                    </div>
+              {events.length > 0 &&
+                events.map((event) => (
+                  <li
+                    key={event.id}
+                    className="bg-custom-gray p-4 m-4 
+              border rounded-md shadow-md "
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-3  sm:items-center gap-4 items-center">
+                      <div className=" text-sm font-medium bg-white w-fit p-2 border rounded-md">
+                        <p>{event.eventDate}</p>
+                        <p className="text-center">{event.eventTime}</p>
+                      </div>
 
-                    <div className=" text-sm font-medium mb-2">
-                      <p>{event.eventName}</p>
-                      <p>{event.eventDescription}</p>
-                    </div>
+                      <div className=" text-sm font-medium mb-2">
+                        <p>{event.eventName}</p>
+                        <p>{event.eventDescription}</p>
+                      </div>
 
-                    <div className="grid justify-start sm:justify-end text-center text-sm font-medium">
-                      <p className="text-center ">{event.eventDuration}</p>
-                      <p>{event.eventLocationName}</p>
+                      <div className="grid justify-start sm:justify-end text-center text-sm font-medium">
+                        <p className="text-center ">{event.eventDuration}</p>
+                        <p>{event.eventLocationName}</p>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                ))}
             </ul>
           </div>
         </>
