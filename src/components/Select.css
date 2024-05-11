@@ -1,0 +1,21 @@
+/* In your global CSS or a dedicated stylesheet */
+
+.select {
+    @apply w-full px-3 py-2 text-sm rounded-md bg-custom-gray border focus:outline-none hover:ring-1 hover:ring-blue-500;
+}
+
+.select option {
+    @apply cursor-pointer p-8;
+    /* Adjust padding as needed */
+}
+
+.select option:not(:last-child) {
+    /* Target all options except the last */
+    @apply border-b border-solid border-gray-200;
+    /* Adjust border style and color */
+}
+
+.select option:hover {
+    @apply bg-gray-100;
+    /* Add hover background */
+}

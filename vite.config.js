@@ -14,15 +14,16 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // server: {
-  //   proxy: {
-  //     "/bcd": {
-  //       // No trailing slash here
-  //       target: "backend-production-fada0.up.railway.app", // Replace with your actual backend URL
-  //       changeOrigin: true, // Ensures correct headers are sent
-  //       // rewrite: (path) => path.replace(/^\/api/, ""), // Remove '/api' prefix before proxying
-  //     },
-  //   },
-  // },
+  server: {
+    proxy: {
+      "/api": {
+        // No trailing slash here
+        target: "http://localhost:3000/api", // Replace with your actual backend URL
+        // target: "https://backend-production-fada0.up.railway.app/api",
+        changeOrigin: true, // Ensures correct headers are sent
+        rewrite: (path) => path.replace(/^\/api/, ""), // Remove '/api' prefix before proxying
+      },
+    },
+  },
   plugins: [react()],
 });

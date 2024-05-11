@@ -1,12 +1,13 @@
-
-
 import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import Input from "./Input";
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import "./Datepicker.css"
-
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "./Datepicker.css";
+import { Link, useNavigate } from "react-router-dom";
+import { GoArrowLeft } from "react-icons/go";
+import "./Select.css"
+import { MdCancel } from "react-icons/md";
 
 function EventForm() {
   const {
@@ -14,66 +15,221 @@ function EventForm() {
     handleSubmit,
     watch,
     setValue,
+    getValues,
+    control,
     formState: { errors },
   } = useForm({
     defaultValues: {
-      notification: "Email",
-      date: new Date()
-    }
+      guestNotificationType: "Email",
+      eventDate: new Date(),
+      attachments: [],
+      eventDescription: "",
+      eventLocationName: "",
+      eventGuestIDs:[],
+    },
   });
 
-  const notificationOptions = ["Email", "Slack"]; 
+
+  const [addedGuests, setAddedGuests] = useState([]);
+  const [inputValue, setInputValue] = useState("")
+  const [selectedGuest, setSelectedGuest] = useState(null)
+
+  const notificationOptions = ["Email", "Slack"];
   const [showDescription, setShowDescription] = useState(false);
-  const watchNotify = watch("notification");
-  const startDate = watch("date");
+  const watchNotify = watch("guestNotificationType");
+  const startDate = watch("eventDate");
+  const startTime = watch("eventTime");
+  const startDuration = watch("eventDuration");
+  const [locations, setLocations] = useState([])
+  const [guestList, setGuestList] = useState([]);
+  const [completeGuestList, setCompleteGuestList] = useState([])
+  const navigate = useNavigate()
 
+  console.log("first ::", getValues("eventGuestIDs"))
 
-  const handleDateChange = (e) => {
-    const date = new Date(e);
-    console.log("date ::", date)
-    const formattedDate = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    setValue('date', formattedDate);
-    console.log("formattedDate ::", formattedDate)
-    
-  }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [locationResponse, completeGuestResponse] = await  Promise.all([
+          fetch("/api/locations/getAllLocationList"),
+          fetch("/api/guests/getAllGuestsList")
+        ])
+        if (!locationResponse.ok || !completeGuestResponse.ok) {
+          throw new Error("One or more API requests failed");
+        }
+        
+        const [locationData, completeGuestData] = await Promise.all([
+          locationResponse.json(),
+          completeGuestResponse.json()
+
+        ])
+
+        
+        setLocations(locationData)
+        setCompleteGuestList(completeGuestData)
+        console.log("data ::", locationData)
+        console.log("Guest data ::", completeGuestData)
+      } catch (error) {
+        console.error("location list not fetched :: ",error)
+      }
+    }
+    fetchData();
+  }, [])
   
-  const onSubmit = (data) => {
 
-    console.log(data);
-    // Handle form submission logic here
+  const handleGuestSearch = (event) => {
+    if (event.target.value) {
+      const filteredList = completeGuestList.filter((guest) =>
+        guest.guestName.toLowerCase().includes(event.target.value)
+      )
+      setGuestList(filteredList)
+
+      console.log("filteredList :: ", filteredList)
+    } else {
+      setGuestList([])
+    }
+  
+
+  }
+
+  const handleGuestSelection = (guestId) => {
+    const selectedGuest = guestList.find((guest) => guest.id === guestId);
+    setSelectedGuest(selectedGuest);
+    setInputValue(selectedGuest.guestName);
+    setGuestList([]);
   };
 
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       const res = await axios.get(
-  //         "https://backend-production-fada0.up.railway.app/api/locations/getAllLocationList"        );
-  //       console.log("res ::", res.data);
-  //       // const locationData = await res.json();
-  //       // console.log("locationData ::", locationData);
-  //     } catch (error) {
-  //       console.error("error ::", error);
-  //     }
-  //   }
-  //   fetchData();
-  // },[])
 
-  // watch all input field values 
-  // useEffect(() => {
-  //   watch((value,{name}) => {
-  //     console.log("ddd",value,name)
-  //   })
-  // },[watch])
+  const handleAddGuest = () => {
+    if (selectedGuest) {
+      const guestIds = watch("eventGuestIDs"); // Get current eventGuestIDs
+      if (!guestIds.includes(selectedGuest.id)) { // Check for duplicate ID
+        setValue(
+          "eventGuestIDs",
+          [...guestIds, selectedGuest.id] // Add selected guest ID if not already present
+        );
+        setAddedGuests((prevAddedGuests) => [...prevAddedGuests, selectedGuest]);
+      }
+      setInputValue("")
+      setSelectedGuest(null); // Clear selected guest after adding (optional)
+    }
+  };
 
-  
+
+  const handleRemoveGuest = (guestId) => {
+    setAddedGuests((prevAddedGuests) =>
+      prevAddedGuests.filter((guest) => guest.id !== guestId)
+    );
+    const updatedGuestIds = watch("eventGuestIDs").filter((id) => id !== guestId);
+    setValue("eventGuestIDs", updatedGuestIds);
+  };
+
+
+
+
+
+  const calculation = () => {
+
+    const date = new Date(startDate).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    console.log("startTime ::", startTime);
+    let [hours, minutes] = startTime.split(":");
+    let period = +hours >= 12 ? "PM" : "AM";
+    console.log("period ::", period);
+
+    hours = hours % 12;
+    hours = hours ? (hours < 10 ? "0" + hours : hours) : 12;
+    minutes = minutes < 10 ? minutes : minutes;
+
+    console.log("hours ::", hours, " :: ", minutes, " :: ", "period ::", period);
+
+    // Convert eventDuration from minutes to hours and minutes
+    const totalMinutes = parseInt(startDuration);
+    const durationHours = Math.floor(totalMinutes / 60);
+    const durationMinutes = totalMinutes % 60;
+
+    // Calculate the end time in hours and minutes
+    let endHours = parseInt(hours) + durationHours;
+    let endMinutes = parseInt(minutes) + durationMinutes;
+
+    // Adjust the hours and minutes if necessary
+    if (endMinutes >= 60) {
+      endHours += 1;
+      endMinutes -= 60;
+    }
+    if (endHours > 12) {
+      endHours -= 12;
+      period = period === "AM" ? "PM" : "AM";
+    }
+
+    // Convert the end hours and minutes to strings
+    endHours = endHours < 10 ? "0" + endHours : endHours;
+    endMinutes = endMinutes < 10 ? "0" + endMinutes : endMinutes;
+
+    return `${date} from ${hours}:${minutes} ${period} until ${endHours}:${endMinutes} ${period}`;
+  };
+
+
+
+
+  const onSubmit = async (data) => {
+    // Add data.attachments = watch("attachments"); if needed
+
+    try {
+      const response = await fetch("/api/events/createEvents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }, // Set the content type
+        body: JSON.stringify(data), // Convert data to JSON
+      });
+
+      if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+      console.log("Event created successfully:", responseData);
+      navigate("/")
+      // Handle successful response (e.g., show a success message, redirect)
+    } catch (error) {
+      console.error("Error creating event:", error);
+      // Handle errors (e.g., show an error message)
+    }
+  };
+
+
+  // const handleRemove = (event, index) => {
+  //   event.preventDefault();
+  //   const newFiles = [...watch('attachments')];
+  //   newFiles.splice(index, 1);
+  //   setValue('attachments', newFiles);
+  // };
+
+  // const handleFileSelect = (event) => {
+  //   const files = Array.from(event.target.files).map(file => ({
+  //     name: file.name,
+  //     size: file.size / 1024 / 1024, // convert size to MB
+  //     progress: 0, // Initial progress is 0
+  //   }));
+  //   setValue('attachments', [...watch('attachments'), ...files]); // update 'attachments' field
+  // };
+
+
 
   return (
-    <div className="max-w-2xl bg-white my-4 sm:my-20 shadow-lg rounded-md mx-4 sm:mx-auto px-4 sm:px-12 py-4 sm:py-16"
->
+    <div className="max-w-2xl bg-white my-4 sm:my-20 shadow-lg rounded-md mx-4 sm:mx-auto px-4 sm:px-12  py-4 sm:py-16 relative">
+      <div className=" mb-12 sm:mb-4 ">
+        <Link
+          to="/"
+          className="absolute top-4 left-4 bg-custom-gray hover:ring-blue-500 hover:ring-1 text-black font-bold py-2 px-4 rounded-md border">
+          <GoArrowLeft />
+        </Link>
+      </div>
       <h2 className="text-xl font-bold mb-8">Create Event</h2>
       <form onSubmit={handleSubmit(onSubmit)} autoFocus>
         <div className="grid grid-cols-1 gap-4">
-
           <div className="mb-4 relative">
             <Input
               label="Event Name"
@@ -85,113 +241,215 @@ function EventForm() {
             <button
               type="button"
               onClick={() => setShowDescription(!showDescription)}
-              className="absolute mt-1 top-1/2 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-2 py-1  rounded focus:outline-none focus:shadow-outline text-sm"
-            >
+              className="absolute  top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-2 py-1  rounded focus:outline-none focus:shadow-outline text-sm">
               {showDescription ? "Hide Description" : "Add Description"}
             </button>
-            
+
           </div>
-            {showDescription && (
-              <Input
-                label="Description"
-                type="text"
-                placeholder="Enter description"
-                {...register("description")}
-                errorMessage={errors.description?.message}
-              />
-            )}
-        
+          {showDescription && (
+            <Input
+              label="Description"
+              type="text"
+              placeholder="Enter description"
+              {...register("eventDescription")}
+              errorMessage={errors.description?.message}
+            />
+          )}
 
-            
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 ">
-              
-              <div>
-                <label
-                  htmlFor="Date"
-                  className="block text-sm font-medium mb-1">
-                  Date
-                </label>
-                <DatePicker
-                  selected={startDate}
-                  onChange={(e) => handleDateChange(e)}
-                  dateFormat="MMMM d, yyyy"
+            <div>
+              <label htmlFor="Date" className="block text-sm font-medium mb-1">
+                Date
+              </label>
+              <DatePicker
+                id="Date"
+                selected={startDate}
+                onChange={(e) => setValue("eventDate", e)}
+                dateFormat="MMMM d, yyyy"
                 className=" datepicker-input"
-                  required
-                />
-
-
-              </div>
+                required
+              />
+            </div>
 
             <div>
               <Input
                 label="Time"
                 type="time"
-                {...register("time", { required: "Time is required" })}
-                  errorMessage={errors.time?.message}
-                  className="py-5"
+                {...register("eventTime", { required: "Time is required" })}
+                errorMessage={errors.eventTime?.message}
               />
             </div>
-
-            <div >
-              <Input
-                label="Duration"
-                type="number"
-                {...register("duration", { required: "Duration is required" })}
-                errorMessage={errors.duration?.message}
-              />
-            </div>
-              
-
-          </div>
-          <div className="relative mb-2">
-
-              <p className="w-fit text-xs text-gray-600 transform -translate-y-2">
-              {watch("date") && watch("time") && watch("duration") ? `This event will take place on the ${watch("date")} from ${watch("time")} until ${watch("duration")} minutes` : ""}
-              </p>
-        </div>
-
-          <div className="mb-4">
-            <Input
-              label="Location"
-              type="text"
-              placeholder="Choose Location"
-              {...register("location")}
-            />
-          </div>
-
-          <div className="mb-4">
-            <Input
-              label="Add Guests"
-              type="text"
-            placeholder="contact@example.com"
-              {...register("guests")}
-            />
-          </div>
-
-          <div className="grid sm:grid-cols-2 grid-cols-1  gap-4 mb-4 max-w-max">
 
             <div>
+              <label
+                htmlFor="Duration"
+                className="block text-sm font-medium mb-1">
+                Duration
+              </label>
+              <select
+                {...register("eventDuration", {
+                  required: "Duration is required",
+                })}
+                className="w-full px-1 py-2 text-sm rounded-md bg-custom-gray border focus:outline-none hover:ring-1 hover:ring-blue-500"
+                id="Duration"
+              >
+                <option value="" className="hidden">
+                  Select Duration
+                </option>
+                <option value="30">30 min</option>
+                <option value="60">1 h </option>
+                <option value="90">1h 30m</option>
+                <option value="120">2h </option>
+              </select>
+              {errors.eventDuration?.message && (
+                <p className="text-red-500 text-xs italic">
+                  {errors.eventDuration?.message}
+                </p>
+              )}
+            </div>
+
+          </div>
+
+
+          <div className="relative mb-2">
+            <p className="w-fit text-xs font-semibold text-gray-600 transform -translate-y-2">
+              {watch("eventDate") &&
+              watch("eventTime") &&
+              watch("eventDuration")
+                ? `This event will take place on the ${calculation()} `
+                : ""}
+            </p>
+          </div>
+
+          <div className="mb-4">
             <label
-                htmlFor="Notification"
-              className="block text-sm font-medium mb-2">
-              Notification
+              htmlFor="Location"
+              className="block text-sm font-medium mb-1">
+              Location
+            </label>
+            <select
+              {...register("eventLocationName")}
+              className="w-full text-sm bg-custom-gray px-3 py-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500"
+              id="Location"
+            >
+              <option value="" className="hidden">
+                Select Location...
+              </option>
+              
+              {locations.length > 0 ? (
+                locations.map((location) => (
+                  
+                  <option key={location.id || location} value={location.name}
+                    className="max-w-max p-8 flex-wrap cursor-pointer gap-4 m-8"
+                  >
+                    {`${location.venue}, ${location.city}`}
+                    </option>
+                  
+                ))
+              ) : (
+                <option value="" disabled>
+                  No Locations Available
+                </option>
+              )}
+            </select>
+          </div>
+
+          <div>
+          <div className=" relative">
+            <label htmlFor="Add Guests"
+              className="block text-sm font-medium mb-1"
+            >Add Guests</label>
+            <input type="text"
+              className="w-full text-sm bg-custom-gray px-3 py-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onChange={(e) =>
+                {setInputValue(e.target.value)
+                handleGuestSearch(e)}}
+              value={inputValue}
+            />
+            <button
+              type="button"
+              onClick={handleAddGuest}
+              className="absolute  top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-3 py-1  rounded focus:outline-none focus:shadow-outline text-sm">
+              Add
+            </button>
+          </div>
+
+          
+
+          <ul className="guest-list divide-y divide-gray-200">  
+          {guestList.length > 0 && (
+            guestList.map((guest) => (
+              <li key={guest.id} className="flex items-center py-2 px-4 hover:bg-blue-400 cursor-pointer"
+                onClick={(e) =>
+                {
+            handleGuestSelection(guest.id)}
+                }
+              >
+                {guest.guestName}
+              </li>
+            ))
+          )}
+          </ul>
+
+
+          <div className="mt-2 flex gap-2">
+            {addedGuests.map((guest) => (
+              <span key={guest.id} className="bg-blue-600 text-sm text-white font-semibold px-2 py-1 rounded-md mr-2 flex items-center w-fit">
+                {guest.guestName}
+                <button
+                  type="button"
+                  className="ml-2 items-center font-semibold  "
+                  onClick={() => handleRemoveGuest(guest.id)}
+                >
+                  <MdCancel />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          </div>
+
+
+          {/* <div>
+            {watch("eventGuestIDs").map((guest)=>guest.guestName)}
+          </div> */}
+
+          
+  {/* Notification and remainder  */}
+
+          <div className="grid sm:grid-cols-2 grid-cols-1  gap-4 mb-4 max-w-max">
+            <div>
+              <label
+                htmlFor="guestNotificationType"
+                className="block text-sm font-medium mb-2"
+              >
+                Notification
               </label>
               <div className="flex w-max gap-1 rounded-md p-3 py-3 text-sm font-medium bg-custom-gray">
                 {notificationOptions.map((option) => (
                   <label key={option} >
                     <input
                       type="radio"
+                      
                       value={option}
-                      {...register("notification")}
+                      {...register("guestNotificationType")}
                       className="hidden"
                     />
-                    <span className={`text-m font-semibold rounded-md bg-custom-gray px-3 transition-transform ease-in-out   ${watchNotify === option ? "p-2 border bg-white border-black-300 " : ""}`}> {option} </span>
+                    <span
+                      className={`text-m font-semibold rounded-md bg-custom-gray px-3 transition-transform ease-in-out   ${
+                        watchNotify === option
+                          ? "p-2 border bg-white border-black-300 "
+                          : ""
+                      }`}>
+                      {" "}
+                      {option}{" "}
+                    </span>
                   </label>
                 ))}
               </div>
             </div>
-            
-            
+
+
             <div>
               <label
                 htmlFor="reminder"
@@ -200,24 +458,28 @@ function EventForm() {
               </label>
               <select
                 id="reminder"
-                name="reminder"
-                {...register("reminder")}
-                className="w-full px-1 py-2 text-sm rounded-md bg-custom-gray border focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="30 minute before event">30 minute before event</option>
-                <option value="1 hour before event">1 hour before event</option>
-                <option value="2 hour before event">2 hour before event</option>
-                <option value="3 hour before event">3 hour before event</option>
-                <option value="4 hour before event">4 day before event</option>
+                {...register("reminderDurationMinutes")}
+                className="w-full px-1 py-2 rounded-md bg-custom-gray border focus:outline-none hover:ring-1 hover:ring-blue-500 text-sm">
+                <option value="" className="hidden">
+                  Select remainder
+                </option>
+                <option value="30">
+                  30 minute before event
+                </option>
+                <option value="60">1 hour before event</option>
+                <option value="120">2 hour before event</option>
+                <option value="180">3 hour before event</option>
+                <option value="240 ">4 hour before event</option>
               </select>
             </div>
+
           </div>
 
+
+          
           <button
             type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-         
-          >
-            
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
             Create Event
           </button>
         </div>

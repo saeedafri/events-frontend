@@ -3,12 +3,15 @@
 import './App.css'
 import Duration from './components/Duration';
 import EventForm from './components/EventForm';
+import Homepage from './components/Homepage';
 
 function App() {
   return (
     <>
-      <EventForm />
+      {/* <EventForm /> */}
       {/* <Duration/> */}
+
+      
     
     </>
   )
