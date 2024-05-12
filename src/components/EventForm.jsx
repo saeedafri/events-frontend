@@ -72,8 +72,12 @@ function EventForm() {
     const fetchData = async () => {
       try {
         const [locationResponse, completeGuestResponse] = await Promise.all([
-          fetch("/api/locations/getAllLocationList"),
-          fetch("/api/guests/getAllGuestsList"),
+          fetch(
+            "https://backend-production-fada0.up.railway.app/api/locations/getAllLocationList"
+          ),
+          fetch(
+            "https://backend-production-fada0.up.railway.app/api/guests/getAllGuestsList"
+          ),
         ]);
         if (!locationResponse.ok || !completeGuestResponse.ok) {
           throw new Error("One or more API requests failed");
