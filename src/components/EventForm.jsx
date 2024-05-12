@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 import Input from "./Input";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -8,6 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { GoArrowLeft } from "react-icons/go";
 import "./Select.css";
 import { MdCancel } from "react-icons/md";
+import { toast } from "react-toastify";
 
 function EventForm() {
   const {
@@ -29,10 +30,11 @@ function EventForm() {
     },
   });
 
+  const [showNoUserFound, setShowNoUserFound] = useState(false);
   const [addedGuests, setAddedGuests] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [selectedGuest, setSelectedGuest] = useState(null);
-
+  const [loading, setLoading] = useState(false);
   const notificationOptions = ["Email", "Slack"];
   const [showDescription, setShowDescription] = useState(false);
   const watchNotify = watch("guestNotificationType");
@@ -42,20 +44,36 @@ function EventForm() {
   const [locations, setLocations] = useState([]);
   const [guestList, setGuestList] = useState([]);
   const [completeGuestList, setCompleteGuestList] = useState([]);
-  const navigate = useNavigate();
 
-  console.log("first ::", getValues("eventGuestIDs"));
+  const navigate = useNavigate();
+  const inputRef = useRef(null);
+  const guestListRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        inputRef.current &&
+        !inputRef.current.contains(event.target) &&
+        guestListRef.current &&
+        !guestListRef.current.contains(event.target)
+      ) {
+        setInputValue("");
+        setGuestList([]);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [locationResponse, completeGuestResponse] = await Promise.all([
-          fetch(
-            "https://backend-production-fada0.up.railway.app/api/locations/getAllLocationList"
-          ),
-          fetch(
-            "https://backend-production-fada0.up.railway.app/api/guests/getAllGuestsList"
-          ),
+          fetch("/api/locations/getAllLocationList"),
+          fetch("/api/guests/getAllGuestsList"),
         ]);
         if (!locationResponse.ok || !completeGuestResponse.ok) {
           throw new Error("One or more API requests failed");
@@ -78,18 +96,19 @@ function EventForm() {
   }, []);
 
   const handleGuestSearch = (event) => {
-    if (event.target.value) {
-      const filteredList = completeGuestList.filter((guest) =>
-        guest.guestName.toLowerCase().includes(event.target.value)
+    const searchValue = event.target.value.toLowerCase();
+    if (searchValue) {
+      const filteredList = completeGuestList.filter(
+        (guest) =>
+          guest.guestName.toLowerCase().includes(searchValue) &&
+          !watch("eventGuestIDs").includes(guest.id)
       );
       setGuestList(filteredList);
-
-      console.log("filteredList :: ", filteredList);
+      setShowNoUserFound(searchValue !== "" && filteredList.length === 0);
     } else {
       setGuestList([]);
     }
   };
-
   const handleGuestSelection = (guestId) => {
     const selectedGuest = guestList.find((guest) => guest.id === guestId);
     setSelectedGuest(selectedGuest);
@@ -126,14 +145,14 @@ function EventForm() {
     setValue("eventGuestIDs", updatedGuestIds);
   };
 
-  const calculation = () => {
+  const calculation = useMemo(() => {
     const date = new Date(startDate).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
     console.log("startTime ::", startTime);
-    let [hours, minutes] = startTime.split(":");
+    let [hours, minutes] = startTime ? startTime.split(":") : [0, 0];
     let period = +hours >= 12 ? "PM" : "AM";
     console.log("period ::", period);
 
@@ -175,20 +194,19 @@ function EventForm() {
     endMinutes = endMinutes < 10 ? "0" + endMinutes : endMinutes;
 
     return `${date} from ${hours}:${minutes} ${period} until ${endHours}:${endMinutes} ${period}`;
-  };
+  }, [startDate, startTime, startDuration]);
+
+  console.log("calculation ::", calculation);
 
   const onSubmit = async (data) => {
     // Add data.attachments = watch("attachments"); if needed
-
     try {
-      const response = await fetch(
-        "https://backend-production-fada0.up.railway.app/api/events/createEvents",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }, // Set the content type
-          body: JSON.stringify(data), // Convert data to JSON
-        }
-      );
+      setLoading(true);
+      const response = await fetch("/api/events/createEvents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }, // Set the content type
+        body: JSON.stringify(data), // Convert data to JSON
+      });
 
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
@@ -196,9 +214,13 @@ function EventForm() {
 
       const responseData = await response.json();
       console.log("Event created successfully:", responseData);
+      toast.success("Event created successfully");
+      setLoading(false);
       navigate("/");
       // Handle successful response (e.g., show a success message, redirect)
     } catch (error) {
+      toast.error("Failed to create event");
+      setLoading(false);
       console.error("Error creating event:", error);
       // Handle errors (e.g., show an error message)
     }
@@ -230,8 +252,10 @@ function EventForm() {
           <GoArrowLeft />
         </Link>
       </div>
+
       <h2 className="text-xl font-bold mb-8">Create Event</h2>
-      <form onSubmit={handleSubmit(onSubmit)} autoFocus>
+
+      <form onSubmit={handleSubmit(onSubmit)} autoFocus autoComplete="on">
         <div className="grid grid-cols-1 gap-4">
           <div className="mb-4 relative">
             <Input
@@ -313,12 +337,13 @@ function EventForm() {
             </div>
           </div>
 
+          {/* description of the time till the event */}
           <div className="relative mb-2">
             <p className="w-fit text-xs font-semibold text-gray-600 transform -translate-y-2">
               {watch("eventDate") &&
               watch("eventTime") &&
               watch("eventDuration")
-                ? `This event will take place on the ${calculation()} `
+                ? `This event will take place on the ${calculation} `
                 : ""}
             </p>
           </div>
@@ -357,48 +382,58 @@ function EventForm() {
             </select>
           </div>
 
-          <div>
-            <div className=" relative">
-              <label
-                htmlFor="Add Guests"
-                className="block text-sm font-medium mb-1"
-              >
-                Add Guests
-              </label>
-              <input
-                type="text"
-                className="w-full text-sm bg-custom-gray px-3 py-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500"
-                onChange={(e) => {
-                  setInputValue(e.target.value);
-                  handleGuestSearch(e);
-                }}
-                value={inputValue}
-              />
-              <button
-                type="button"
-                onClick={handleAddGuest}
-                className="absolute  top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-3 py-1  rounded focus:outline-none focus:shadow-outline text-sm"
-              >
-                Add
-              </button>
-            </div>
+          {/* guest list */}
 
-            <ul className="guest-list divide-y divide-gray-200">
-              {guestList.length > 0 &&
+          <div className="mb-4 relative guest-list-item">
+            <label
+              htmlFor="Add Guests"
+              className="block text-sm font-medium mb-1"
+            >
+              Add Guests
+            </label>
+            <input
+              type="text"
+              className="w-full text-sm bg-custom-gray px-3 py-2 rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                handleGuestSearch(e);
+              }}
+              value={inputValue}
+              ref={inputRef}
+            />
+            <button
+              type="button"
+              onClick={handleAddGuest}
+              className="absolute top-9 right-1 transform -translate-y-1/4 bg- border m- white hover:bg-gray-200 text-black font-semibold px-3 py-1 rounded focus:outline-none focus:shadow-outline text-sm"
+            >
+              Add
+            </button>
+            <div
+              className="absolute z-50 mt-2 w-full bg-custom-gray rounded-md shadow-lg"
+              ref={guestListRef}
+            >
+              {inputValue === "" ? null : guestList.length > 0 ? (
                 guestList.map((guest) => (
-                  <li
+                  <div
                     key={guest.id}
-                    className="flex items-center py-2 px-4 hover:bg-blue-400 cursor-pointer"
+                    className="px-3 py-2 hover:bg-blue-600 hover:rounded-md hover:text-white text-md font-semibold mb-1 cursor-pointer"
                     onClick={(e) => {
+                      e.preventDefault();
                       handleGuestSelection(guest.id);
+                      setInputValue(guest.guestName);
+                      setGuestList([]);
                     }}
                   >
                     {guest.guestName}
-                  </li>
-                ))}
-            </ul>
-
-            <div className="mt-2 flex gap-2">
+                  </div>
+                ))
+              ) : showNoUserFound ? (
+                <div className="px-3 py-2 text-md font-semibold">
+                  No user found
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
               {addedGuests.map((guest) => (
                 <span
                   key={guest.id}
@@ -407,7 +442,7 @@ function EventForm() {
                   {guest.guestName}
                   <button
                     type="button"
-                    className="ml-2 items-center font-semibold  "
+                    className="ml-2 items-center  font-semibold "
                     onClick={() => handleRemoveGuest(guest.id)}
                   >
                     <MdCancel />
@@ -416,10 +451,6 @@ function EventForm() {
               ))}
             </div>
           </div>
-
-          {/* <div>
-            {watch("eventGuestIDs").map((guest)=>guest.guestName)}
-          </div> */}
 
           {/* Notification and remainder  */}
 
@@ -481,9 +512,12 @@ function EventForm() {
 
           <button
             type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            disabled={loading}
+            className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
-            Create Event
+            {loading ? "Loading..." : "Create Event"}
           </button>
         </div>
       </form>

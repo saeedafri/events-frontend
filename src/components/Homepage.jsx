@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Spinner from "./Spinner.jsx";
+import { toast } from "react-toastify";
 
 function Homepage() {
   const [events, setEvents] = useState([]); // State to store events
@@ -9,9 +10,7 @@ function Homepage() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const res = await fetch(
-          "https://backend-production-fada0.up.railway.app/api/events/getAllEventsList"
-        );
+        const res = await fetch("/api/events/getAllEventsList");
         const data = await res.json();
         console.log(data);
         const newData = data.map((event) => {
@@ -37,7 +36,9 @@ function Homepage() {
         });
 
         setEvents(newData.reverse());
+        toast.success("Events fetched successfully");
       } catch (error) {
+        toast.error("Failed to fetch events");
         console.log("Fetch Posts Error:", error);
       } finally {
         setLoading(false);
